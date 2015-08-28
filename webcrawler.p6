@@ -5,39 +5,39 @@ my %working = ();
 my $max_parallel = 2;
 while @to_work || %working {
     while @to_work && ((keys %working) < $max_parallel) {
-        my $url = shift @to_work;
+        my $id = shift @to_work;
         my $promise = Promise.start({
             await Promise.anyof(
-                my $timed_out = Promise.in($url / 100),
+                my $timed_out = Promise.in($id / 100),
                 my $request = Promise.start({
 
-                    if $url %% 5 {
-                        if $url %% 2 {
+                    if $id %% 5 {
+                        if $id %% 2 {
                             die '/0$/ fail';
                         }
 
-                        await Promise.in($url / 10);
+                        await Promise.in($id / 10);
                     }
 
-                    if $url < 1e4 {
-                        [ $url * 2, ($url * 2) + 1 ];
+                    if $id < 1e4 {
+                        [ $id * 2, ($id * 2) + 1 ];
                     }
                 }),
             );
             CATCH {
                 default {
-                    say sprintf "%4d: $_", $url;
+                    say sprintf "%4d: $_", $id;
                 }
             }
 
             if $timed_out {
-                say sprintf '%4d: /5$/ time out', $url;
+                say sprintf '%4d: /5$/ time out', $id;
             }
 
             $request.result;
         });
 
-        %working{$url} = $promise;
+        %working{$id} = $promise;
     }
 
     say "\t\t\twaiting " ~ join ', ', map { sprintf("%4d", $_) }, sort keys %working;
