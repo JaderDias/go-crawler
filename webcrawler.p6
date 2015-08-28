@@ -1,49 +1,52 @@
 use v6;
-my @to_work = ('url');
-my @working = ();
-my $max_network_connections = 4;
-my $timeout_s = 1;
-while @to_work || @working {
-    my $url = shift @to_work;
-    if $url {
+use Data::Dump;
+my @to_work = (1);
+my %working = ();
+my $max_parallel = 2;
+while @to_work || %working {
+    while @to_work && ((keys %working) < $max_parallel) {
+        my $url = shift @to_work;
         my $promise = Promise.start({
             await Promise.anyof(
-                my $timed_out = Promise.in($timeout_s),
+                my $timed_out = Promise.in($url / 100),
                 my $request = Promise.start({
-                    # there's 10% of chance of a request failing
-                    die if $url ne 'url' && rand < .1;
-                    CATCH {
-                        default {
-                            say "$url failed";
+
+                    if $url %% 5 {
+                        if $url %% 2 {
+                            die '/0$/ fail';
                         }
+
+                        await Promise.in($url / 10);
                     }
 
-                    # there's 10% chance of a request timing out;
-                    await Promise.in($timeout_s * 2) if $url ne 'url' && rand < .1;
-
-                    [ $url ~ 0, $url ~ 1 ];
+                    if $url < 1e4 {
+                        [ $url * 2, ($url * 2) + 1 ];
+                    }
                 }),
             );
-        
-            if $timed_out {
-                say "$url timed out";
-                [];
-            } else { 
-                $request.result;
+            CATCH {
+                default {
+                    say sprintf "%4d: $_", $url;
+                }
             }
+
+            if $timed_out {
+                say sprintf '%4d: /5$/ time out', $url;
+            }
+
+            $request.result;
         });
 
-        push @working, $promise;
+        %working{$url} = $promise;
     }
 
-    if !@to_work || @working >= $max_network_connections {
-        await Promise.anyof(@working);
-        for @working -> $promise {
-            if ($promise) {
-                push @to_work, @($promise.result);
-            }
+    say "\t\t\twaiting " ~ join ', ', map { sprintf("%4d", $_) }, sort keys %working;
+    await Promise.anyof(values %working);
+    for values %working -> $promise {
+        if ($promise && $promise.result) {
+            push @to_work, @($promise.result);
         }
-
-        @working .= grep({ !$_ });
     }
+
+    %working = map { $_ => %working{$_} }, grep { !%working{$_} }, keys %working;
 }
