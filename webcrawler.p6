@@ -16,7 +16,7 @@ while @to_work || %working {
                             die '/0$/ fail';
                         }
 
-                        await Promise.in($id / 10);
+                        await Promise.in($id / 50);
                     }
 
                     if $id < 1e4 {
