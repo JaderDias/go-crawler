@@ -1,5 +1,5 @@
 use v6;
-use Data::Dump;
+
 my @to_work = (1);
 my %working = ();
 my $max_parallel = 2;
