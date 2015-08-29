@@ -2,34 +2,53 @@ package main
 
 import (
 	"log"
-	"time"
+    "time"
 )
 
-const limit = 1e3
+const searchSpace = 1e3
+const max_parallelism = 2
 
-func main() {
-	semaphore := make(chan int)
-	finished := make(chan int)
-	go Crawl(1, semaphore, finished)
-
-	for id := range make([]int, 1+(2*limit)) {
-		<-finished
-		log.Println(id, "finished")
-	}
-
-	close(semaphore)
-	close(finished)
+type Status struct {
+    id int
+    finished bool
 }
 
-func Crawl(id int, semaphore <-chan int, finished chan<- int) {
-	log.Println(id, "start")
-	finished <- id
-	log.Println("\t", id, "answered")
-	if id <= limit {
-		go Crawl(2*id, semaphore, finished)
-		time.Sleep(1)
-		Crawl((2*id)+1, semaphore, finished)
+func main() {
+	channel := make(chan Status, max_parallelism)
+    working := []int{}
+	go Crawl(1, channel)
+	for _ = range make([]int, searchSpace * 2) {
+        status := <-channel
+        if status.finished {
+            temp := []int{}
+            for _, v := range working {
+                if v != status.id {
+                    temp = append(temp, v)
+                }
+            }
+
+            working = temp
+        } else {
+            working = append(working, status.id)
+        }
+
+        log.Println("working", working)
 	}
 
-	log.Println("\t", id, "last line")
+	close(channel)
+}
+
+func Crawl(id int, channel chan<- Status) {
+	channel <- Status{id, false}
+    time.Sleep(1)
+	channel <- Status{id, true}
+    nextId := 2*id
+	if nextId <= searchSpace {
+		go Crawl(nextId, channel)
+    }
+
+    nextId++
+    if nextId <= searchSpace {
+		Crawl(nextId, channel)
+	}
 }
