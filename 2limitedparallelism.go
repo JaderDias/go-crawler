@@ -4,8 +4,6 @@ import (
 	"log"
 )
 
-const searchSpace = 1e3
-
 func main() {
 	channel := make(chan Response)
 	to_work := []int{1}
@@ -15,7 +13,14 @@ func main() {
 			id := to_work[0]
 			to_work = to_work[1:]
 			working[id] = true
-			go Crawl(id, channel)
+			go func() {
+				links := []int{}
+				if id < 1e3 {
+					links = []int{2 * id, (2 * id) + 1}
+				}
+
+				channel <- Response{id, links}
+			}()
 		}
 
 		log.Println("working", working)
@@ -25,17 +30,6 @@ func main() {
 			to_work = append(to_work, link)
 		}
 	}
-
-	close(channel)
-}
-
-func Crawl(id int, channel chan<- Response) {
-	links := []int{}
-	if id < searchSpace {
-		links = []int{2 * id, (2 * id) + 1}
-	}
-
-	channel <- Response{id, links}
 }
 
 type Response struct {
