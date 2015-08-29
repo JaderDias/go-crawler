@@ -2,33 +2,31 @@ package main
 
 import (
 	"log"
+    "time"
 )
 
 func main() {
     semaphore := make(chan int)
 	finished := make(chan int)
-    Crawl(1, semaphore, finished)
+    go Crawl(1, semaphore, finished)
 
-    semaphore<-1
-    semaphore<-1
-	for id := range finished  {
+	for id := range make([]int, 1 + 2e3)  {
         log.Println(id, "finished")
-        semaphore<-1
 	}
 
-    close(finished)
     close(semaphore)
+    close(finished)
 }
 
-func Crawl(id int, semaphore, finished chan int) {
-	log.Println(id, "ready")
-    // <-semaphore
+func Crawl(id int, semaphore <-chan int, finished chan<- int) {
 	log.Println(id, "start")
-	if id < 3 {
+    finished <- id
+    log.Println("\t", id, "answered")
+	if id < 1e3 {
 		go Crawl(2*id, semaphore, finished)
-		go Crawl((2*id)+1, semaphore, finished)
+        time.Sleep(1)
+		Crawl((2*id)+1, semaphore, finished)
 	}
 
-    finished <- id
-	log.Println(id, "last line")
+	log.Println("\t", id, "last line")
 }
