@@ -1,27 +1,15 @@
 use v6;
 
-my @to_work = (1);
-my %working = ();
-my $max_parallel = 2;
-while @to_work || %working {
-    while @to_work && ((keys %working) < $max_parallel) {
-        my $id = shift @to_work;
-        my $promise = Promise.start({
-            if $id < 1e3 {
-                [ $id * 2, ($id * 2) + 1 ];
+my @supplies = (Supply.new, Supply.new);
+for @supplies -> $supply {
+    $supply.act: -> $id {
+        say "$id";
+        if $id < 1e3 {
+            for (0, 1) -> $i {
+                @supplies[$i].emit(($id * 2) + $i);
             }
-        });
-
-        %working{$id} = $promise;
-    }
-
-    say "\t\t\twaiting " ~ join ', ', map { sprintf("%4d", $_) }, sort keys %working;
-    await Promise.anyof(values %working);
-    for values %working -> $promise {
-        if ($promise && $promise.result) {
-            push @to_work, @($promise.result);
         }
     }
-
-    %working = map { $_ => %working{$_} }, grep { !%working{$_} }, keys %working;
 }
+
+@supplies[0].emit(1);
