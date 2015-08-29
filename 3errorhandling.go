@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+    "fmt"
 )
 
 const searchSpace = 1e3
@@ -19,11 +20,15 @@ func main() {
 		}
 
 		log.Println("working", working)
-		response := <-channel
-		delete(working, response.id)
-		for _, link := range response.links {
-			to_work = append(to_work, link)
-		}
+        select {
+            case response := <-channel:
+                delete(working, response.id)
+                for _, link := range response.links {
+                    to_work = append(to_work, link)
+                }
+            case <-time.After(1 * time.Second):
+                log.Println("")
+        }
 	}
 
 	close(channel)
@@ -31,14 +36,16 @@ func main() {
 
 func Crawl(id int, channel chan<- Response) {
 	links := []int{}
+    channel <- Response{id, fmt.Errorf("failed"), links}
 	if id < searchSpace {
 		links = []int{2 * id, (2 * id) + 1}
 	}
 
-	channel <- Response{id, links}
+	channel <- Response{id, nil, links}
 }
 
 type Response struct {
 	id    int
+    err   Error
 	links []int
 }
