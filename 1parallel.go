@@ -2,52 +2,50 @@ package main
 
 import (
 	"log"
-    "time"
 )
 
 const searchSpace = 1e3
 
-type Status struct {
-    id int
-    finished bool
-}
-
 func main() {
-	channel := make(chan Status)
-    working := []int{}
+	channel := make(chan Response)
 	go Crawl(1, channel)
-	for _ = range make([]int, searchSpace * 2) {
-        status := <-channel
-        if status.finished {
-            temp := []int{}
-            for _, v := range working {
-                if v != status.id {
-                    temp = append(temp, v)
-                }
-            }
-
-            working = temp
-        } else {
-            working = append(working, status.id)
-        }
-
-        log.Println("working", working)
+	working := IntSlice([]int{1})
+	for len(working) > 0 {
+		log.Println("working", working)
+		response := <-channel
+		working = working.FilterOut(response.id)
+		for _, link := range response.links {
+			go Crawl(link, channel)
+			working = append(working, link)
+		}
 	}
 
 	close(channel)
 }
 
-func Crawl(id int, channel chan<- Status) {
-	channel <- Status{id, false}
-    time.Sleep(1)
-	channel <- Status{id, true}
-    nextId := 2*id
-	if nextId <= searchSpace {
-		go Crawl(nextId, channel)
-    }
-
-    nextId++
-    if nextId <= searchSpace {
-		Crawl(nextId, channel)
+func Crawl(id int, channel chan<- Response) {
+	links := []int{}
+	if id < searchSpace {
+		links = []int{2 * id, (2 * id) + 1}
 	}
+
+	channel <- Response{id, links}
+}
+
+type Response struct {
+	id    int
+	links []int
+}
+
+type IntSlice []int
+
+func (slice IntSlice) FilterOut(id int) []int {
+	temp := []int{}
+	for _, v := range slice {
+		if v != id {
+			temp = append(temp, v)
+		}
+	}
+
+	return temp
 }
