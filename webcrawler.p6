@@ -19,7 +19,7 @@ while @to_work || %working {
                         await Promise.in($id / 50);
                     }
 
-                    if $id < 1e4 {
+                    if $id < 1e3 {
                         [ $id * 2, ($id * 2) + 1 ];
                     }
                 }),
