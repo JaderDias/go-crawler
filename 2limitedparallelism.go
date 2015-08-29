@@ -6,7 +6,6 @@ import (
 )
 
 const searchSpace = 1e3
-const max_parallelism = 2
 
 type Status struct {
     id int
@@ -14,12 +13,16 @@ type Status struct {
 }
 
 func main() {
-	channel := make(chan Status, max_parallelism)
+	channel := make(chan Status)
+    semaphore := make(chan int, 2)
+    semaphore<-1
+    semaphore<-1
     working := []int{}
-	go Crawl(1, channel)
+	go Crawl(1, channel, semaphore)
 	for _ = range make([]int, searchSpace * 2) {
         status := <-channel
         if status.finished {
+            semaphore<- 1
             temp := []int{}
             for _, v := range working {
                 if v != status.id {
@@ -36,19 +39,21 @@ func main() {
 	}
 
 	close(channel)
+    close(semaphore)
 }
 
-func Crawl(id int, channel chan<- Status) {
-	channel <- Status{id, false}
+func Crawl(id int, channel chan<- Status, semaphore <-chan int) {
+    <-semaphore
+	channel<- Status{id, false}
     time.Sleep(1)
-	channel <- Status{id, true}
+	channel<- Status{id, true}
     nextId := 2*id
 	if nextId <= searchSpace {
-		go Crawl(nextId, channel)
+		go Crawl(nextId, channel, semaphore)
     }
 
     nextId++
     if nextId <= searchSpace {
-		Crawl(nextId, channel)
+		Crawl(nextId, channel, semaphore)
 	}
 }
